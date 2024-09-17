@@ -123,6 +123,7 @@ pub async fn llm_call(
         Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status, _))) => {
             error!("{}", &status);
             if status == 429 {
+                response.close();
                 println!("Rate limit exceeded, try again after 5s");
                 tokio::time::sleep(Duration::from_secs(5)).await;
                 let openai_key = req.openai_key.clone();
