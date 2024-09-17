@@ -110,7 +110,7 @@ pub async fn llm_call(
 
         reqwest::Client::new()
             .post("https://api.openai.com/v1/chat/completions")
-            .bearer_auth(req.openai_key)
+            .bearer_auth(req.openai_key.clone())
             .json(&request)
     };
 
@@ -122,6 +122,16 @@ pub async fn llm_call(
         Some(Ok(reqwest_eventsource::Event::Open)) => {}
         Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status, _))) => {
             error!("{}", &status);
+            if status == 429 {
+                println!("Rate limit exceeded, try again after 5s");
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                let openai_key = req.openai_key.clone();
+                return Box::pin(llm_call(api::LLMRequest {
+                    openai_key,
+                    ..req.clone()
+                })).await;
+            }
+
             return Err(api::Error::BadOpenAiRequest.into());
         }
         Some(Err(e)) => {
